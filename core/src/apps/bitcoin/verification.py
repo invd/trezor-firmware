@@ -1,7 +1,9 @@
 from trezor import wire
+from trezor.crypto import der
+from trezor.crypto.curve import secp256k1
 from trezor.crypto.hashlib import sha256
 
-from .common import ecdsa_hash_pubkey, ecdsa_verify
+from .common import ecdsa_hash_pubkey
 from .scripts import (
     input_script_p2wpkh_in_p2sh,
     input_script_p2wsh_in_p2sh,
@@ -97,8 +99,21 @@ class SignatureVerifier:
         # hash type by using ensure_hash_type() before calling verify.
         try:
             i = 0
-            for signature, _ in self.signatures:
-                while not ecdsa_verify(self.public_keys[i], signature, digest):
+            for der_signature, _ in self.signatures:
+                signature = decode_der_signature(der_signature)
+                while not secp256k1.verify(self.public_keys[i], signature, digest):
                     i += 1
         except Exception:
             raise wire.DataError("Invalid signature")
+
+
+def decode_der_signature(der_signature: bytes) -> bytearray:
+    seq = der.decode_seq(der_signature)
+    if len(seq) != 2 or any(len(i) > 32 for i in seq):
+        raise ValueError
+
+    signature = bytearray(64)
+    signature[32 - len(seq[0]) : 32] = seq[0]
+    signature[64 - len(seq[1]) : 64] = seq[1]
+
+    return signature
