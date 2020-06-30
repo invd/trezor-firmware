@@ -548,7 +548,7 @@ def test_p2wpkh_with_false_proof(client):
             ]
         )
 
-        with pytest.raises(TrezorFailure, match="Fake external input"):
+        with pytest.raises(TrezorFailure, match="Invalid external input"):
             btc.sign_tx(
                 client, "Testnet", [inp1, inp2], [out1], prev_txes=TX_CACHE_TESTNET,
             )
