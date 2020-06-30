@@ -179,7 +179,7 @@ class Bitcoin:
                 if not verify_nonownership(
                     txi.ownership_proof, script_pubkey, b"", self.keychain, self.coin
                 ):
-                    raise wire.DataError("Fake external input")
+                    raise wire.DataError("Invalid external input")
             else:
                 verifier = SignatureVerifier(
                     script_pubkey, txi.script_sig, txi.witness, self.coin
