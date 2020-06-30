@@ -1,8 +1,6 @@
 from trezor import utils, wire
 from trezor.crypto import bip32, hashlib, hmac
 
-from apps.bitcoin.multisig import multisig_pubkey_index
-from apps.bitcoin.writers import write_bytes_prefixed
 from apps.common import seed
 from apps.common.readers import BytearrayReader, read_bitcoin_varint
 from apps.common.writers import (
@@ -12,8 +10,8 @@ from apps.common.writers import (
     write_uint8,
 )
 
-from . import common, scripts
-from .readers import read_bytes_prefixed
+from . import common
+from .scripts import read_bip322_signature_proof, write_bip322_signature_proof
 from .verification import SignatureVerifier
 
 if False:
@@ -58,25 +56,10 @@ def generate_proof(
         sighash.update(commitment_data)
     signature = common.ecdsa_sign(node, sighash.digest())
     public_key = node.public_key()
-
-    script_sig = scripts.input_derive_script(
-        script_type, multisig, coin, common.SIGHASH_ALL, public_key, signature
+    write_bip322_signature_proof(
+        proof, script_type, multisig, coin, public_key, signature
     )
-    if script_type in common.SEGWIT_INPUT_SCRIPT_TYPES:
-        if multisig:
-            # find the place of our signature based on the public key
-            signature_index = multisig_pubkey_index(multisig, public_key)
-            witness = scripts.witness_p2wsh(
-                multisig, signature, signature_index, common.SIGHASH_ALL
-            )
-        else:
-            witness = scripts.witness_p2wpkh(signature, public_key, common.SIGHASH_ALL)
-    else:
-        # Zero entries in witness stack.
-        witness = b"\x00"
 
-    write_bytes_prefixed(proof, script_sig)
-    proof.extend(witness)
     return proof, signature
 
 
@@ -105,13 +88,12 @@ def verify_nonownership(
                 not_owned = False
 
         # Verify the BIP-322 SignatureProof.
-        proof_body = proof[: r.offset]
-        script_sig = read_bytes_prefixed(r)
-        witness = r.read()
 
+        proof_body = proof[: r.offset]
         sighash = hashlib.sha256(proof_body)
         sighash.update(script_pubkey)
         sighash.update(commitment_data)
+        script_sig, witness = read_bip322_signature_proof(r)
 
         # We don't call verifier.ensure_hash_type() to avoid possible compatibility
         # issues between implementations, because the hash type doesn't influence
