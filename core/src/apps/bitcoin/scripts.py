@@ -150,7 +150,7 @@ def parse_input_script_p2pkh(script_sig: bytes,) -> Tuple[bytes, bytes, int]:
         r = BytearrayReader(script_sig)
         n = read_op_push(r)
         signature = r.read(n - 1)
-        sighash_type = r.get()
+        hash_type = r.get()
 
         n = read_op_push(r)
         pubkey = r.read()
@@ -159,7 +159,7 @@ def parse_input_script_p2pkh(script_sig: bytes,) -> Tuple[bytes, bytes, int]:
     except (ValueError, IndexError):
         wire.DataError("Invalid scriptSig.")
 
-    return pubkey, signature, sighash_type
+    return pubkey, signature, hash_type
 
 
 def output_script_p2pkh(pubkeyhash: bytes) -> bytearray:
@@ -282,7 +282,7 @@ def parse_witness_p2wpkh(witness: bytes) -> Tuple[bytes, bytes, int]:
 
         n = read_bitcoin_varint(r)
         signature = r.read(n - 1)
-        sighash_type = r.get()
+        hash_type = r.get()
 
         pubkey = read_bytes_prefixed(r)
         if r.remaining_count():
@@ -290,7 +290,7 @@ def parse_witness_p2wpkh(witness: bytes) -> Tuple[bytes, bytes, int]:
     except (ValueError, IndexError):
         raise wire.DataError("Invalid witness.")
 
-    return pubkey, signature, sighash_type
+    return pubkey, signature, hash_type
 
 
 def witness_p2wsh(
@@ -357,8 +357,8 @@ def parse_witness_p2wsh(witness: bytes) -> Tuple[bytes, List[Tuple[bytes, int]]]
         for i in range(item_count - 2):
             n = read_bitcoin_varint(r)
             signature = r.read(n - 1)
-            sighash_type = r.get()
-            signatures.append((signature, sighash_type))
+            hash_type = r.get()
+            signatures.append((signature, hash_type))
 
         script = read_bytes_prefixed(r)
         if r.remaining_count():
@@ -432,8 +432,8 @@ def parse_input_script_multisig(
         n = read_op_push(r)
         while r.remaining_count() > n:
             signature = r.read(n - 1)
-            sighash_type = r.get()
-            signatures.append((signature, sighash_type))
+            hash_type = r.get()
+            signatures.append((signature, hash_type))
             n = read_op_push(r)
 
         script = r.read()
