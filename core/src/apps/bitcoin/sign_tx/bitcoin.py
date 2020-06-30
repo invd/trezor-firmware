@@ -122,7 +122,6 @@ class Bitcoin:
     async def step1_process_inputs(self) -> None:
         for i in range(self.tx.inputs_count):
             # STAGE_REQUEST_1_INPUT in legacy
-            progress.advance()
             txi = await helpers.request_tx_input(self.tx_req, i, self.coin)
             self.weight.add_input(txi)
             if input_is_segwit(txi):
@@ -132,6 +131,7 @@ class Bitcoin:
                 self.external.add(i)
                 await self.process_external_input(txi)
             else:
+                progress.advance()
                 await self.process_internal_input(txi)
 
     async def step2_confirm_outputs(self) -> None:
@@ -217,6 +217,7 @@ class Bitcoin:
 
     async def step7_sign_segwit_inputs(self) -> None:
         if not self.segwit:
+            progress.advance(self.tx.inputs_count)
             return
 
         for i in range(self.tx.inputs_count):
